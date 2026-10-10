@@ -1,16 +1,6 @@
-<!doctype html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#b23a2a">
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}[hidden]{display:none!important}</style>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>ボレロ スネア</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap">
-</head>
-<body>
 <style>
 /* Layout: one-screen instrument panel — pattern strip on top, two big knobs, one transport button at the bottom. */
 :root{
@@ -135,7 +125,7 @@ header small{color:var(--muted);font-size:.8rem}
         <option value="10">10分</option><option value="12">12分</option><option value="15" selected>15分</option><option value="17">17分</option>
       </select>
     </div>
-    <p class="hint">ノブは上下にドラッグ。TONEは左がタイト（乾いた音）、右がディープ（太い音）で、停止中に回すと試し打ちが鳴ります。原曲の指定は ♩=72。iPhoneはマナーモードだと鳴らない場合があります。再生中は画面を消灯しません。</p>
+    <p class="hint">ノブは上下にドラッグ。TONEは左がタイト（乾いた音）、右がディープ（太い音）で、停止中に回すと試し打ちが鳴ります。原曲の指定は ♩=72。iPhoneで鳴らないときは、サイドの音量ボタンで音量を上げ、LINEから開いた場合は右下の「…」からSafariで開いてください。再生中は画面を消灯しません。</p>
   </section>
 
   <div class="elapsed" id="elapsed">00:00</div>
@@ -187,7 +177,30 @@ header small{color:var(--muted);font-size:.8rem}
   const TEMPO_MIN=40, TEMPO_MAX=120;
 
   // ---- audio ----
-  let ac=null, master=null, noiseBuf=null;
+  let ac=null, master=null, noiseBuf=null, unmuteEl=null;
+  // iOS Safari mutes Web Audio under the ring/silent switch unless an <audio> element is
+  // also playing; a looping silent clip switches the audio session to "playback".
+  function silentWav(){
+    const rate=8000, secs=1, n=rate*secs, buf=new ArrayBuffer(44+n), v=new DataView(buf);
+    const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+    w(0,'RIFF'); v.setUint32(4,36+n,true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true);
+    v.setUint16(20,1,true); v.setUint16(22,1,true); v.setUint32(24,rate,true); v.setUint32(28,rate,true);
+    v.setUint16(32,1,true); v.setUint16(34,8,true); w(36,'data'); v.setUint32(40,n,true);
+    for(let i=0;i<n;i++) v.setUint8(44+i,128);
+    return URL.createObjectURL(new Blob([buf],{type:'audio/wav'}));
+  }
+  function unmuteStart(){
+    try{
+      if (!unmuteEl){
+        unmuteEl=document.createElement('audio');
+        unmuteEl.src=silentWav(); unmuteEl.loop=true; unmuteEl.setAttribute('playsinline','');
+        unmuteEl.setAttribute('webkit-playsinline',''); unmuteEl.preload='auto'; unmuteEl.volume=0.01;
+        document.body.appendChild(unmuteEl);
+      }
+      const p=unmuteEl.play(); if (p&&p.catch) p.catch(()=>{});
+    }catch(e){}
+  }
+  function unmuteStop(){ try{ unmuteEl?.pause(); }catch(e){} }
   function ensureAudio(){
     if (ac) return;
     ac = new (window.AudioContext||window.webkitAudioContext)();
@@ -278,8 +291,10 @@ header small{color:var(--muted);font-size:.8rem}
 
   let wake=null;
   async function start(){
+    unmuteStart();            // must be called synchronously inside the tap
     ensureAudio();
-    if (ac.state==='suspended') await ac.resume();
+    if (ac.state!=='running'){ try{ await ac.resume(); }catch(e){} }
+    if (ac.state!=='running'){ posLbl.textContent='音声を開始できません。もう一度タップしてください'; return; }
     running=true; nextIdx=0; lastT=null; flashQueue.length=0;
     countIn = optCount.checked ? 3 : 0;
     nextCycleStart = ac.currentTime + 0.1;
@@ -290,14 +305,18 @@ header small{color:var(--muted);font-size:.8rem}
     try { wake = await navigator.wakeLock?.request('screen'); } catch(e){}
   }
   function stop(){
-    running=false; clearInterval(timer);
+    running=false; clearInterval(timer); unmuteStop();
     go.textContent='▶ スタート'; go.classList.remove('run');
     allCells.forEach(c=>c.el.classList.remove('on'));
     posLbl.textContent='—'; lblA.classList.remove('cur'); lblB.classList.remove('cur');
     try { wake?.release(); } catch(e){} wake=null;
   }
   go.addEventListener('click', ()=> running ? stop() : start());
-  document.addEventListener('visibilitychange', async ()=>{ if (!document.hidden && running && wake===null){ try{ wake=await navigator.wakeLock?.request('screen'); }catch(e){} } });
+  document.addEventListener('visibilitychange', async ()=>{
+    if (document.hidden || !running) return;
+    if (ac && ac.state!=='running'){ try{ await ac.resume(); }catch(e){} }
+    if (wake===null){ try{ wake=await navigator.wakeLock?.request('screen'); }catch(e){} }
+  });
 
   // ---- knobs ----
   function makeKnob(el, get, set, min, max, step){
@@ -336,8 +355,8 @@ header small{color:var(--muted);font-size:.8rem}
   nDn.onclick=()=>{ setTone(Math.max(0,tone-5)); rN(); };
   nUp.onclick=()=>{ setTone(Math.min(100,tone+5)); rN(); };
   // preview a hit when the tone knob is released, so it can be tuned while stopped
-  kTone.addEventListener('pointerup', ()=>{ if (!running){ ensureAudio(); if (ac.state==='suspended') ac.resume(); applyVol(); snare(ac.currentTime+0.01, 1, 1); } });
+  kTone.addEventListener('pointerup', ()=>{ if (!running){ unmuteStart(); ensureAudio(); if (ac.state!=='running') ac.resume(); applyVol(); snare(ac.currentTime+0.01, 1, 1); setTimeout(()=>{ if(!running) unmuteStop(); }, 400); } });
 })();
 </script>
-</body>
-</html>
+
+</body></html>
