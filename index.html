@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#b23a2a">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>ボレロ スネア</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap">
+</head>
+<body>
+<style>
+/* Layout: one-screen instrument panel — pattern strip on top, two big knobs, one transport button at the bottom. */
+:root{
+  --bg:#f3efe6;        /* parchment, like a drum head */
+  --panel:#fbf9f3;
+  --fg:#241f1a;
+  --muted:#7a6f63;
+  --line:#d9d1c2;
+  --accent:#b23a2a;    /* lacquer red of a snare shell */
+  --accent-fg:#fff;
+  --knob:#2b2622;
+  --knob-mark:#f3efe6;
+  --hit:#b23a2a;
+  --font-ui:"Zen Kaku Gothic New",system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;
+  --font-num:"DM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#17140f;--panel:#1f1b16;--fg:#eee8dc;--muted:#a1968a;--line:#3a332b;
+    --accent:#d9553f;--accent-fg:#fff;--knob:#0f0d0a;--knob-mark:#eee8dc;--hit:#d9553f;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#17140f;--panel:#1f1b16;--fg:#eee8dc;--muted:#a1968a;--line:#3a332b;
+  --accent:#d9553f;--accent-fg:#fff;--knob:#0f0d0a;--knob-mark:#eee8dc;--hit:#d9553f;color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-ui);
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.wrap{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:14px 24px;display:flex;flex-direction:column;gap:18px;min-height:100%}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+h1{font-size:1.25rem;font-weight:700;margin:0;letter-spacing:.02em}
+header small{color:var(--muted);font-size:.8rem}
+
+/* pattern strip */
+.score{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 12px 10px}
+.score .lbl{font-size:.7rem;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;display:flex;justify-content:space-between}
+.bar{display:grid;grid-template-columns:repeat(18,1fr);gap:3px;margin-top:8px;align-items:end;height:38px}
+.n{background:var(--line);border-radius:2px;height:14px;transition:background .05s,height .05s}
+.n.b{height:30px}            /* on-beat note */
+.n.on{background:var(--hit);height:38px}
+.barlbl{font-family:var(--font-num);font-size:.72rem;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between}
+.barlbl span.cur{color:var(--accent);font-weight:500}
+
+/* knobs */
+.knobs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.kcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 6px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
+.kcard .name{font-size:.72rem;letter-spacing:.1em;color:var(--muted)}
+.knob{--d:clamp(84px,24vw,120px);width:var(--d);height:var(--d);max-width:100%;border-radius:50%;position:relative;touch-action:none;cursor:ns-resize;
+  background:radial-gradient(circle at 38% 32%,#5a4f46,var(--knob) 65%);
+  box-shadow:0 6px 16px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.12)}
+.knob:focus-visible{outline:3px solid var(--accent);outline-offset:4px}
+.knob .ptr{position:absolute;left:50%;top:8%;width:5px;height:24%;margin-left:-2.5px;border-radius:3px;background:var(--knob-mark);transform-origin:50% calc(var(--d)*0.42)}
+.val{font-family:var(--font-num);font-size:1.4rem;font-variant-numeric:tabular-nums;line-height:1;white-space:nowrap}
+.val small{font-size:.72rem;color:var(--muted);margin-left:3px}
+.val .word{font-family:var(--font-ui);font-size:.8rem;font-weight:500}
+.steps{display:flex;gap:6px}
+.steps button{font-family:var(--font-num);font-size:1rem;width:36px;height:32px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--fg)}
+.steps button:active{background:var(--line)}
+
+/* options */
+.opts{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;display:flex;flex-direction:column;gap:8px;font-size:.9rem}
+.opt{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.opt label{display:flex;align-items:center;gap:8px}
+.opt select{font:inherit;font-family:var(--font-num);padding:4px 6px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
+.opt input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent)}
+.hint{font-size:.78rem;color:var(--muted);line-height:1.5;margin:0}
+
+/* transport */
+.go{margin-top:auto;height:72px;border-radius:14px;border:0;font:inherit;font-size:1.25rem;font-weight:700;letter-spacing:.08em;
+  background:var(--accent);color:var(--accent-fg);box-shadow:0 6px 0 rgba(0,0,0,.25);cursor:pointer}
+.go:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.25)}
+.go.run{background:var(--knob);color:var(--knob-mark)}
+.go:focus-visible{outline:3px solid var(--fg);outline-offset:3px}
+.elapsed{font-family:var(--font-num);font-size:.85rem;color:var(--muted);text-align:center;font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){.n{transition:none}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>ボレロ スネア</h1>
+    <small>Ravel / 3拍子・2小節オスティナート</small>
+  </header>
+
+  <section class="score" aria-label="リズムパターン">
+    <div class="lbl"><span>Pattern</span><span id="posLbl">—</span></div>
+    <div class="bar" id="barA"></div>
+    <div class="barlbl"><span id="lblA">1小節目</span><span></span></div>
+    <div class="bar" id="barB"></div>
+    <div class="barlbl"><span id="lblB">2小節目</span><span></span></div>
+  </section>
+
+  <section class="knobs">
+    <div class="kcard">
+      <div class="name">TEMPO</div>
+      <div class="knob" id="kTempo" role="slider" tabindex="0" aria-label="テンポ" aria-valuemin="40" aria-valuemax="120" aria-valuenow="72"><div class="ptr"></div></div>
+      <div class="val"><span id="vTempo">72</span><small>BPM</small></div>
+      <div class="steps"><button id="tDn" type="button" aria-label="テンポを1下げる">−</button><button id="tUp" type="button" aria-label="テンポを1上げる">＋</button></div>
+    </div>
+    <div class="kcard">
+      <div class="name">VOLUME</div>
+      <div class="knob" id="kVol" role="slider" tabindex="0" aria-label="音量" aria-valuemin="0" aria-valuemax="100" aria-valuenow="70"><div class="ptr"></div></div>
+      <div class="val"><span id="vVol">70</span><small>%</small></div>
+      <div class="steps"><button id="vDn" type="button" aria-label="音量を5下げる">−</button><button id="vUp" type="button" aria-label="音量を5上げる">＋</button></div>
+    </div>
+    <div class="kcard">
+      <div class="name">TONE</div>
+      <div class="knob" id="kTone" role="slider" tabindex="0" aria-label="音色（タイト〜ディープ）" aria-valuemin="0" aria-valuemax="100" aria-valuenow="40"><div class="ptr"></div></div>
+      <div class="val"><span id="vTone">40</span><small id="vToneWord" class="word"></small></div>
+      <div class="steps"><button id="nDn" type="button" aria-label="音色をタイト側へ">−</button><button id="nUp" type="button" aria-label="音色をディープ側へ">＋</button></div>
+    </div>
+  </section>
+
+  <section class="opts">
+    <div class="opt">
+      <label><input type="checkbox" id="optCount"> 1小節カウント（クリック）してから開始</label>
+    </div>
+    <div class="opt">
+      <label><input type="checkbox" id="optCresc"> 自動クレッシェンド（pp → ff）</label>
+      <select id="crescMin" aria-label="クレッシェンドの長さ">
+        <option value="10">10分</option><option value="12">12分</option><option value="15" selected>15分</option><option value="17">17分</option>
+      </select>
+    </div>
+    <p class="hint">ノブは上下にドラッグ。TONEは左がタイト（乾いた音）、右がディープ（太い音）で、停止中に回すと試し打ちが鳴ります。原曲の指定は ♩=72。iPhoneはマナーモードだと鳴らない場合があります。再生中は画面を消灯しません。</p>
+  </section>
+
+  <div class="elapsed" id="elapsed">00:00</div>
+  <button class="go" id="go" type="button">▶ スタート</button>
+</div>
+
+<script>
+(() => {
+  // ---- rhythm definition (beat offsets within the 2-bar, 6-beat cycle) ----
+  const T = 1/3, S = 1/6;
+  // each: [beatOffset, velocity, isOnBeat]
+  const barA = [
+    [0,1,1],[0.5,.55,0],[0.5+S,.4,0],[0.5+2*S,.4,0],
+    [1,1,1],[1.5,.55,0],[1.5+S,.4,0],[1.5+2*S,.4,0],
+    [2,1,1],[2.5,.6,0]
+  ];
+  const barB = [
+    [3,1,1],[3.5,.55,0],[3.5+S,.4,0],[3.5+2*S,.4,0],
+    [4,1,1],[4.5,.55,0],[4.5+S,.4,0],[4.5+2*S,.4,0],
+    [5,1,1],[5+S,.45,0],[5+2*S,.45,0],[5.5,.6,0],[5.5+S,.45,0],[5.5+2*S,.45,0]
+  ];
+  const notes = barA.concat(barB);
+  const CYCLE = 6; // beats
+
+  // ---- draw pattern strip (18 columns per bar = 6 sixteenth-triplet slots per beat) ----
+  const cells = {A:[], B:[]};
+  function drawBar(el, bar, base, key){
+    el.innerHTML = '';
+    for (let i=0;i<18;i++){
+      const d = document.createElement('div'); d.className='n';
+      const pos = base + i/6;
+      const idx = bar.findIndex(n => Math.abs(n[0]-pos) < 1e-6);
+      if (idx<0) d.style.visibility='hidden';
+      else if (bar[idx][2]) d.classList.add('b');
+      el.appendChild(d); cells[key].push({el:d, pos, has: idx>=0});
+    }
+  }
+  drawBar(document.getElementById('barA'), barA, 0, 'A');
+  drawBar(document.getElementById('barB'), barB, 3, 'B');
+  const allCells = cells.A.concat(cells.B);
+
+  // ---- state ----
+  let tempo = 72, vol = 70, tone = 40;
+  try {
+    tempo = +localStorage.getItem('bs.tempo') || 72;
+    vol = localStorage.getItem('bs.vol')!==null ? +localStorage.getItem('bs.vol') : 70;
+    tone = localStorage.getItem('bs.tone')!==null ? +localStorage.getItem('bs.tone') : 40;
+  } catch(e){}
+  const TEMPO_MIN=40, TEMPO_MAX=120;
+
+  // ---- audio ----
+  let ac=null, master=null, noiseBuf=null;
+  function ensureAudio(){
+    if (ac) return;
+    ac = new (window.AudioContext||window.webkitAudioContext)();
+    master = ac.createGain(); master.connect(ac.destination);
+    const len = ac.sampleRate*0.3, b = ac.createBuffer(1,len,ac.sampleRate), d=b.getChannelData(0);
+    for (let i=0;i<len;i++) d[i]=Math.random()*2-1;
+    noiseBuf=b;
+  }
+  function snare(t, vel, g){
+    const x = tone/100;                       // 0 = tight/dry, 1 = deep/fat
+    const lerp=(a,b)=>a+(b-a)*x;
+    // wires: filtered noise burst
+    const src=ac.createBufferSource(); src.buffer=noiseBuf;
+    const bp=ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=lerp(4200,1500); bp.Q.value=lerp(0.9,0.5);
+    const hp=ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=lerp(1400,450);
+    const ng=ac.createGain();
+    const nDecay = lerp(0.06,0.20) + 0.05*vel;
+    ng.gain.setValueAtTime(0.0001,t); ng.gain.linearRampToValueAtTime(vel*g*lerp(1,0.85),t+0.002);
+    ng.gain.exponentialRampToValueAtTime(0.0001,t+nDecay);
+    src.connect(hp).connect(bp).connect(ng).connect(master);
+    src.start(t); src.stop(t+0.3);
+    // shell: short pitched body
+    const o=ac.createOscillator(); o.type='triangle';
+    const f0=lerp(260,150);
+    o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(f0*0.68,t+0.04);
+    const og=ac.createGain();
+    og.gain.setValueAtTime(0.0001,t); og.gain.linearRampToValueAtTime(vel*g*lerp(0.25,0.9),t+0.002);
+    og.gain.exponentialRampToValueAtTime(0.0001,t+lerp(0.05,0.13));
+    o.connect(og).connect(master); o.start(t); o.stop(t+0.16);
+  }
+  function click(t, strong){
+    const o=ac.createOscillator(); o.type='square'; o.frequency.value=strong?1400:1000;
+    const g=ac.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(strong?0.5:0.3,t+0.001);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.03);
+    o.connect(g).connect(master); o.start(t); o.stop(t+0.04);
+  }
+
+  // ---- scheduler ----
+  let running=false, startTime=0, nextIdx=0, nextCycleStart=0, timer=null, countIn=0, lastT=null;
+  const LOOKAHEAD=0.12, INTERVAL=25;
+  const flashQueue=[]; // {time, cellPos}
+  function beatSec(){ return 60/tempo; }
+  function crescGain(elapsed){
+    if (!optCresc.checked) return 1;
+    const dur = +crescMin.value*60;
+    const x = Math.min(1, elapsed/dur);
+    return 0.12 + 0.88*x*x;   // pp -> ff, perceptually ramping
+  }
+  function schedule(){
+    const horizon = ac.currentTime + LOOKAHEAD;
+    while (true){
+      let t, isClick=false, n=null;
+      if (countIn>0){
+        t = nextCycleStart + (3-countIn)*beatSec();
+        if (t > horizon) break;
+        click(t, countIn===3); countIn--;
+        if (countIn===0) nextCycleStart += 3*beatSec();
+        continue;
+      }
+      n = notes[nextIdx];
+      // incremental timing so a tempo change mid-run takes effect smoothly
+      t = nextIdx===0 && lastT!==null ? lastT + (CYCLE - notes[notes.length-1][0])*beatSec()
+        : lastT===null ? nextCycleStart
+        : lastT + (n[0]-notes[nextIdx-1][0])*beatSec();
+      if (t > horizon) break;
+      snare(t, n[1], crescGain(t-startTime));
+      flashQueue.push({time:t, pos:n[0]});
+      lastT = t; nextIdx++;
+      if (nextIdx>=notes.length) nextIdx=0;
+    }
+  }
+  function tick(){
+    if (!running) return;
+    schedule();
+    const now=ac.currentTime;
+    while (flashQueue.length && flashQueue[0].time<=now){
+      const f=flashQueue.shift();
+      allCells.forEach(c=>c.el.classList.toggle('on', c.has && Math.abs(c.pos-f.pos)<1e-6));
+      const bar = f.pos<3 ? 1 : 2, beat = Math.floor(f.pos%3)+1;
+      posLbl.textContent = `${bar}小節目 ${beat}拍`;
+      lblA.classList.toggle('cur', bar===1); lblB.classList.toggle('cur', bar===2);
+    }
+    const e=Math.max(0,now-startTime); elapsed.textContent=fmt(e);
+    if (optCresc.checked) elapsed.textContent += `  ·  ${dyn(crescGain(e))}`;
+  }
+  function fmt(s){ s=Math.floor(s); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+  function dyn(g){ return g<.2?'pp':g<.33?'p':g<.5?'mp':g<.7?'mf':g<.9?'f':'ff'; }
+
+  let wake=null;
+  async function start(){
+    ensureAudio();
+    if (ac.state==='suspended') await ac.resume();
+    running=true; nextIdx=0; lastT=null; flashQueue.length=0;
+    countIn = optCount.checked ? 3 : 0;
+    nextCycleStart = ac.currentTime + 0.1;
+    startTime = nextCycleStart + (optCount.checked ? 3*beatSec() : 0);
+    applyVol();
+    go.textContent='■ ストップ'; go.classList.add('run');
+    timer=setInterval(tick, INTERVAL);
+    try { wake = await navigator.wakeLock?.request('screen'); } catch(e){}
+  }
+  function stop(){
+    running=false; clearInterval(timer);
+    go.textContent='▶ スタート'; go.classList.remove('run');
+    allCells.forEach(c=>c.el.classList.remove('on'));
+    posLbl.textContent='—'; lblA.classList.remove('cur'); lblB.classList.remove('cur');
+    try { wake?.release(); } catch(e){} wake=null;
+  }
+  go.addEventListener('click', ()=> running ? stop() : start());
+  document.addEventListener('visibilitychange', async ()=>{ if (!document.hidden && running && wake===null){ try{ wake=await navigator.wakeLock?.request('screen'); }catch(e){} } });
+
+  // ---- knobs ----
+  function makeKnob(el, get, set, min, max, step){
+    const ptr=el.querySelector('.ptr');
+    function render(){ const f=(get()-min)/(max-min); ptr.style.transform=`rotate(${-135+270*f}deg)`; el.setAttribute('aria-valuenow',get()); }
+    let dragging=false, lastY=0, acc=0;
+    el.addEventListener('pointerdown', e=>{ dragging=true; lastY=e.clientY; acc=0; el.setPointerCapture(e.pointerId); });
+    el.addEventListener('pointermove', e=>{
+      if (!dragging) return;
+      const dy = lastY - e.clientY; lastY=e.clientY;
+      acc += dy * (max-min)/220;         // full travel ≈ 220px
+      const n = Math.round(acc/step)*step;
+      if (n!==0){ set(Math.max(min,Math.min(max,get()+n))); acc-=n; render(); }
+    });
+    const end=()=>{ dragging=false; };
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+    el.addEventListener('keydown', e=>{
+      const d = e.key==='ArrowUp'||e.key==='ArrowRight' ? step : e.key==='ArrowDown'||e.key==='ArrowLeft' ? -step : 0;
+      if (d){ e.preventDefault(); set(Math.max(min,Math.min(max,get()+d))); render(); }
+    });
+    render(); return render;
+  }
+  function applyVol(){ if (master) master.gain.value = Math.pow(vol/100, 1.6); }
+  function setTempo(v){ tempo=v; vTempo.textContent=v; try{localStorage.setItem('bs.tempo',v);}catch(e){} }
+  function setVol(v){ vol=v; vVol.textContent=v; applyVol(); try{localStorage.setItem('bs.vol',v);}catch(e){} }
+  function toneWord(v){ return v<20?'タイト':v<40?'ドライ':v<60?'標準':v<80?'ウェット':'ディープ'; }
+  function setTone(v){ tone=v; vTone.textContent=v; vToneWord.textContent=toneWord(v); try{localStorage.setItem('bs.tone',v);}catch(e){} }
+  setTempo(Math.max(TEMPO_MIN,Math.min(TEMPO_MAX,tempo))); setVol(Math.max(0,Math.min(100,vol))); setTone(Math.max(0,Math.min(100,tone)));
+  const rT = makeKnob(kTempo, ()=>tempo, setTempo, TEMPO_MIN, TEMPO_MAX, 1);
+  const rV = makeKnob(kVol, ()=>vol, setVol, 0, 100, 1);
+  const rN = makeKnob(kTone, ()=>tone, setTone, 0, 100, 1);
+  tDn.onclick=()=>{ setTempo(Math.max(TEMPO_MIN,tempo-1)); rT(); };
+  tUp.onclick=()=>{ setTempo(Math.min(TEMPO_MAX,tempo+1)); rT(); };
+  vDn.onclick=()=>{ setVol(Math.max(0,vol-5)); rV(); };
+  vUp.onclick=()=>{ setVol(Math.min(100,vol+5)); rV(); };
+  nDn.onclick=()=>{ setTone(Math.max(0,tone-5)); rN(); };
+  nUp.onclick=()=>{ setTone(Math.min(100,tone+5)); rN(); };
+  // preview a hit when the tone knob is released, so it can be tuned while stopped
+  kTone.addEventListener('pointerup', ()=>{ if (!running){ ensureAudio(); if (ac.state==='suspended') ac.resume(); applyVol(); snare(ac.currentTime+0.01, 1, 1); } });
+})();
+</script>
+</body>
+</html>
